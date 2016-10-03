@@ -318,6 +318,7 @@ module.exports = (robot) ->
     msg.reply "You are: #{user['name']}"
   ############################################################################
 
+  
   # BSP add - Sept 30 2016
   ############################################################################
   # get executions
@@ -326,17 +327,18 @@ module.exports = (robot) ->
   #-----------------
   # hubot get executions|deployments|runs (for app <name filter>)
   # 
-  # PE: would be nice to handle key words like get "last|latest|last n" runs
   ############################################################################
-  getAppsRegStr = "get#{regBlank}(?:Executions|Deployments|Runs)"
-  getAppsRegStr += "(?:#{regBlank}for#{regBlank}(?:Application|App)#{regBlank}#{regParam})?"
-  getAppsReg = new RegExp(getAppsRegStr, 'i')
-
-  robot.respond getAppsReg, (msg) ->
+  
+  #  get\s+(?:Executions|Execs|Exec|Execution|Deployments|Deploys|Deployment|Deploy|Runs|Run)\s+(?:for|)\s*(?:app|application| )\s*(?:("[^"]+"|'[^']+'|[^\s]+))?
+  #  get\s+(?:(last[ ]*)(\d+)|)\s*(?:Executions|Execs|Deployments|Deploys|Runs|Run)\s+(?:for|)\s*(?:app|application| )\s*(?:("[^"]+"|'[^']+'|[^\s]+))?
+  robot.respond /get\s+(?:(last)[ ]*(\d+)|)\s*(?:Executions|Execs|Deployments|Deploys|Runs|Run)\s*(?:for|)\s*(?:app|application|)\s*(?:("[^"]+"|'[^']+'|[^\s]+))?/i, (msg) ->
     unless verifyConfig(msg)
       return
 
-    nameFilter = stripQ(msg.match[1]).toLowerCase() if msg.match[1]
+    #console.log("DEBUG: #{msg.match[1]} - #{msg.match[2]} - #{msg.match[3]}")
+    typeFilter = #{msg.match[1]} if msg.match[1]
+    numFilter = msg.match[2] if msg.match[2]
+    nameFilter = stripQ(msg.match[3]).toLowerCase() if msg.match[3]
 
     url = "#{config.apiAccess}/executions?max_results=100000"
     request.get {
@@ -356,21 +358,28 @@ module.exports = (robot) ->
         msg.reply "I didn't find any deployments or executions!"
         return
 
-      list = "Here are all the executions"
+      list = "Here are"
+      list += " the last #{numFilter} executions" if numFilter
+      list += " all the executions " if not numFilter	  
       list += " for application *#{nameFilter}*" if nameFilter
       list += " I found: \n"
-      
-      for exec in body["data"]
+
+      NumberToShow = 10000
+      n = 0
+      #if numFilter
+      #  NumberToShow = parseInt(#{numFilter}, 10)
+  
+      for exec in body["data"].reverse()
         if not nameFilter or exec["application"]["name"].toLowerCase().match(nameFilter)
-          list += "\n Application: #{exec["application"]["name"]} ID:[#{exec["application"]["id"]}]\n"
-          list += " Started At: #{exec["actual_from"]} ID:[#{exec["id"]}]\n"
-          list += " Status: #{exec["status"]}\n"
-          list += " Workflow: #{exec["workflow"]["name"]} ID:[#{exec["workflow"]["id"]}]\n"
-          list += " Package: #{exec["package"]["name"]} ID:[#{exec["package"]["id"]}]\n"
-          list += " Profile: #{exec["deployment_profile"]["name"]} ID:[#{exec["deployment_profile"]["id"]}]\n"
-          list += " Environment: #{exec["deployment_profile"]["environment"]}\n"
-          #list += "\n#{exec["id"]}" if not nameFilter or exec["id"].toLowerCase().match(nameFilter)
-          #return
+          if not numFilter or n < numFilter
+            list += "\n Application: #{exec["application"]["name"]} | ID:[#{exec["application"]["id"]}]\n"
+            list += " Started At - Ended At: #{exec["actual_from"]} - #{exec["actual_to"]} | ID:[#{exec["id"]}]\n"
+            list += " Status: #{exec["status"]}\n"
+            list += " Workflow: #{exec["workflow"]["name"]} | ID:[#{exec["workflow"]["id"]}]\n"
+            list += " Package: #{exec["package"]["name"]} | ID:[#{exec["package"]["id"]}]\n"
+            list += " Profile: #{exec["deployment_profile"]["name"]} | ID:[#{exec["deployment_profile"]["id"]}]\n"
+            list += " Environment: #{exec["deployment_profile"]["environment"]}\n"
+            n++
 
       msg.reply list
   ############################################################################
