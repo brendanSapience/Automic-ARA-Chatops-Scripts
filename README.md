@@ -4,5 +4,8 @@
   
   # Additional features
   
-    - "get runs" | "get runs for app DemoApp"
+    - "get runs" | "get runs for DemoApp"
     => returns the list of deployments / runs for all Applications or a particular Application
+
+    - "get last n runs for DemoApp"
+    => returns the list of last n deployments / runs for a particular Application
